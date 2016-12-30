@@ -7,24 +7,24 @@ module( "ability_item_usage_generic", package.seeall )
 
 ----------------------------------------------------------------------------------------------------
 
-function AbilityUsageThink()
-	local courier = DotaBotUtility.IsItemAvailable("item_courier");
-	if(courier ~= nil) then
-		local npcBot = GetBot();
-		npcBot:Action_UseAbility(courier);
-	end
+-- function AbilityUsageThink()
+-- 	local courier = DotaBotUtility.IsItemAvailable("item_courier");
+-- 	if(courier ~= nil) then
+-- 		local npcBot = GetBot();
+-- 		npcBot:Action_UseAbility(courier);
+-- 	end
 
-	--print( "Generic.AbilityUsageThink" );
+-- 	--print( "Generic.AbilityUsageThink" );
 
-end
+-- end
 
-----------------------------------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------------------------------
 
-function ItemUsageThink()
+-- function ItemUsageThink()
 
-	--print( "Generic.ItemUsageThink" );
+-- 	--print( "Generic.ItemUsageThink" );
 
-end
+-- end
 
 ----------------------------------------------------------------------------------------------------
 

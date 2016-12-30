@@ -1,7 +1,7 @@
 _G._savedEnv = getfenv()
 module( "ability_item_usage_lion", package.seeall )
 
-local utils = require(GetScriptDirectory() .. "/util")
+-- local utils = require(GetScriptDirectory() .. "/util")
 ----------------------------------------------------------------------------------------------------
 
 castImpaleDesire = 0;
