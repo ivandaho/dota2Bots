@@ -156,7 +156,9 @@ function ConsiderImpale()
     -- consider casting on enemy if on the offense
     if ( npcBot:GetActiveMode() == BOT_MODE_ATTACK ) then
         local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 700, true, BOT_MODE_NONE );
-        return BOT_ACTION_DESIRE_HIGH, tableNearbyEnemyHeroes[1];
+        if(#tableNearbyEnemyHeroes > 0) then
+            return BOT_ACTION_DESIRE_HIGH, tableNearbyEnemyHeroes[1];
+        end
     end
 
 
@@ -283,6 +285,10 @@ function ConsiderVoodoo()
 
         -- calculate if lion has just launched an impale
         -- wait until the impale can reach the nearest unit
+        if (#tableNearbyEnemyHeroes < 1) then
+            return
+        end
+
         local npcTargetClosest = tableNearbyEnemyHeroes[1];
         local v = abilityImpale:GetSpecialValueInt("speed");
         local d = GetUnitToUnitDistance(npcBot, npcTargetClosest);
