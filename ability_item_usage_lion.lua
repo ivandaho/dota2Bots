@@ -8,8 +8,8 @@ castImpaleDesire = 0;
 castVoodooDesire = 0;
 castManaDrainDesire = 0;
 castFingerDesire = 0;
-min = 0
-sec = 0
+-- min = 0
+-- sec = 0
 timeOfLastImpaleCast = -1;
 ----------------------------------------------------------------------------------------------------
 
@@ -28,36 +28,53 @@ function CourierUsageThink()
 end
 
 ----------------------------------------------------------------------------------------------------
+function CheckDesires()
+    return castImpaleDesire, castVoodooDesire, castManaDrainDesire;
+end
 
 function AbilityUsageThink()
     local npcBot = GetBot();
 
-    min = math.floor(DotaTime() / 60)
-    sec = DotaTime() % 60
+    -- min = math.floor(DotaTime() / 60)
+    -- sec = DotaTime() % 60
 
     -- Check if we're already using an ability
-    if ( npcBot:IsUsingAbility() ) then return end;
+    if (npcBot:IsUsingAbility()) then
+        local abilityManaDrain = npcBot:GetAbilityByName("lion_mana_drain");
+        if not (abilityManaDrain:IsChanneling()) then
+            -- print("ability that is being used is not mana drain");
+            return
+        end
+        -- an ability is being used (mana drain)
+        -- might want to interrupt mana drain for something better
+        -- print(ManaPriority(npcBot));
+        if (ManaPriority(npcBot) > 0.7) then
+            -- if we need mana for other spells,
+            -- continue channeling mana drain
+            return
+        end
+
+        -- TODO: insert logic to retreat back if channeling with low health
+        -- local defensive = false;
+        -- if (npcBot:GetHealth() / npcBot:GetMaxHealth() < 0.5) then
+        --     defensive = true;
+        -- end
+        -- if (defensive == true) then
+        --     print("health low while casting mana drain.");
+        -- end
+
+
+    end
 
     abilityImpale = npcBot:GetAbilityByName("lion_impale");
     abilityVoodoo = npcBot:GetAbilityByName("lion_Voodoo");
     abilityManaDrain = npcBot:GetAbilityByName("lion_mana_drain");
     abilityFinger = npcBot:GetAbilityByName("lion_finger_of_death");
 
-    -- bind dagger to slot
-    -- itemBlink = "item_blink";
-    -- for i=0, 5 do
-    --  if(npcBot:GetItemInSlot(i) ~= nil) then
-    --      local _item = npcBot:GetItemInSlot(i):GetName()
-    --      if(_item == itemBlink) then
-    --          itemBlink = npcBot:GetItemInSlot(i);
-    --      end
-    --  end
-    -- end
-
-    -- Consider using each ability
-
     castImpaleDesire, castImpaleTarget = ConsiderImpale();
     castVoodooDesire, castVoodooTarget = ConsiderVoodoo();
+    castManaDrainDesire, castManaDrainTarget = ConsiderManaDrain();
+    -- print(CheckDesires());
 
 
     local highestDesire = castImpaleDesire;
@@ -69,12 +86,12 @@ function AbilityUsageThink()
             desiredSkill = 2;
     end
 
-    --[[
     if ( castManaDrainDesire > highestDesire)
         then
             highestDesire = castManaDrainDesire;
             desiredSkill = 3;
     end
+    --[[
 
     if ( castFingerDesire > highestDesire)
         then
@@ -115,7 +132,7 @@ function ConsiderImpale()
     local npcBot = GetBot();
 
     -- Make sure it's castable
-    if ( not abilityImpale:IsFullyCastable() ) then
+    if (not abilityImpale:IsFullyCastable()) then
         -- print("Impale: not fully castable");
         return BOT_ACTION_DESIRE_NONE;
     end;
@@ -134,6 +151,14 @@ function ConsiderImpale()
     --------------------------------------
     -- Mode based usage
     --------------------------------------
+
+
+    -- consider casting on enemy if on the offense
+    if ( npcBot:GetActiveMode() == BOT_MODE_ATTACK ) then
+        local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 700, true, BOT_MODE_NONE );
+        return BOT_ACTION_DESIRE_HIGH, tableNearbyEnemyHeroes[1];
+    end
+
 
     -- force lion to think in all modes
     -- local debug2 = true;
@@ -254,7 +279,7 @@ function ConsiderVoodoo()
             return BOT_ACTION_DESIRE_NONE;
         end
         local nCastRange = abilityVoodoo:GetCastRange();
-        local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nCastRange, true, BOT_MODE_NONE );
+        local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nCastRange+300, true, BOT_MODE_NONE );
 
         -- calculate if lion has just launched an impale
         -- wait until the impale can reach the nearest unit
@@ -284,7 +309,7 @@ function ConsiderVoodoo()
                 end
             else
                 -- check the following on each nearby enemy
-                local safeTime = 0.2
+                local safeTime = 0.4
                 if (DotaTime() > timeOfLastImpaleCast + abilityImpale:GetSpecialValueFloat("duration") - safeTime) then
                 -- if (DotaTime() > timeOfLastImpaleCast + 0.5) then
                     -- if impale's duration is running out
@@ -292,7 +317,7 @@ function ConsiderVoodoo()
                     -- attempt to chain disable
                     if (CanCastVoodooOnTarget(npcTarget)) then
                         -- print("Hex: cast - reason: chain from impale");
-                        return BOT_ACTION_DESIRE_HIGH, npcTarget;
+                        return BOT_ACTION_DESIRE_VERYHIGH, npcTarget;
                     end
                 end
             end
@@ -320,6 +345,96 @@ end
 
 ----------------------------------------------------------------------------------------------------
 
+function ManaPriority(npcBot)
+    -- checks the amount of mana available on Lion
+    -- returns a float from 0 to 1 representing Lion's
+    -- need for mana
+    local manaCostImpale = abilityImpale:GetManaCost();
+    local manaCostVoodoo = abilityImpale:GetManaCost();
+    local currentMana = npcBot:GetMana();
+
+    local higherManaCost = manaCostVoodoo;
+    local lowerManaCost = manaCostImpale;
+    local totalManaCost = manaCostImpale + manaCostVoodoo;
+    if (manaCostImpale > higherManaCost) then
+        higherManaCost = manaCostImpale
+        lowerManaCost = manaCostVoodoo
+    end
+    -- TODO: add logic for Finger
+
+    if (npcBot:GetMana() / npcBot:GetMaxMana() > 0.8) then
+        -- lion has more than 80% mana
+        return -1;
+    elseif  (currentMana > totalManaCost + 200) then
+        -- lion still has a lot of mana
+        return -1;
+    elseif  (currentMana > totalManaCost) then
+        -- lion can cast all spells
+        return 0.2;
+    elseif  (currentMana > totalManaCost) then
+        -- lion can cast all spells
+        return 0.2;
+    elseif (currentMana > higherManaCost) then
+        -- lion can cast either spell
+        -- but not enough to cast multipe spells
+        return 0.4;
+    elseif (currentMana  > lowerManaCost) then
+        -- lion can cast ONLY one spell
+        return 0.6;
+    end
+    -- lion doesn't have mana for a disable
+    -- highest priorty
+    return 1.0;
+end
+
+function ManaDrainAmount(npcBot, npcTarget)
+    -- predicts the amount of mana drained on a target
+    -- TODO: implement this when laning against a mana dependent hero
+    -- for example, preventing juggernaut spin:w
+    local minimumTraverseRange = GetUnitToUnitDistance(npcBot, npcTarget);
+    local targetMS = npcTarget:GetCurrentMovementSpeed();
+end
+
+function ManaDrainTime(npcBot, npcTarget)
+    -- calculates the worst case scenario of how long a mana drain will last
+    -- assuming the target instantly attempts to break maina drain by moving away
+    if (npcTarget == nil) then
+        return 0;
+    end
+
+    local nBreakDistance = abilityManaDrain:GetSpecialValueInt( "break_distance" );
+    local minimumTraverseRange = nBreakDistance - GetUnitToUnitDistance(npcBot, npcTarget);
+    local targetMS = npcTarget:GetCurrentMovementSpeed();
+    local timeReq = minimumTraverseRange / targetMS;
+
+    return timeReq;
+end
+
+function ConsiderManaDrain()
+    local npcBot = GetBot();
+    -- Make sure it's castable
+    if (not abilityManaDrain:IsFullyCastable()) then
+        -- print("ManaDrain: not fully castable");
+        return BOT_ACTION_DESIRE_NONE;
+    end
+
+    local nBreakDistance = abilityManaDrain:GetSpecialValueInt( "break_distance" );
+    local nCastRange = abilityManaDrain:GetCastRange();
+    local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nBreakDistance, true, BOT_MODE_NONE );
+    local drainTime = ManaDrainTime(npcBot, tableNearbyEnemyHeroes[1]);
+    -- TODO: implement something along with ManaDrainAmount that causes lion to mana drain
+    -- a critical amount of mana away from the opponent (such as to prevent a big ult usage)
+    if (drainTime > 1) then
+        -- if it is possible to drain for more than a second without breaking
+        return Clamp(BOT_ACTION_DESIRE_LOW + ManaPriority(npcBot), 0.0, 1.0), tableNearbyEnemyHeroes[1];
+        -- elseif (drainTime > 2) then
+        --     return BOT_ACTION_DESIRE_MODERATE, tableNearbyEnemyHeroes[1];
+        -- elseif (drainTime > 3) then
+        --     return BOT_ACTION_DESIRE_HIGH, tableNearbyEnemyHeroes[1];
+    end
+
+    return BOT_ACTION_DESIRE_NONE;
+end
 function ConsiderBlinkInit()
 
     local npcBot = GetBot();
